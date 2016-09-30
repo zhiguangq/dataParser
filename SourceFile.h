@@ -39,12 +39,14 @@ public:
     SourceFile();
     ~SourceFile();
     bool scanFiles(std::string path);       // 扫描出所有文件
+    bool sortFiles(void);
     bool moveFiles(std::string path);       // 移动文件到相应目录
 private:
     INTERFACE getFileType(std::string str);
     std::string getFileTypeString(INTERFACE type);
     int getTimestampColumn(INTERFACE type);
     void printFileInfo(FileInfo& fi);
+    static bool CompTime(const FileInfo& pl, const FileInfo& pr);
 
     std::string utcToStream(std::string timestampStr);
     std::string getTimestamp(std::string line, int clo);

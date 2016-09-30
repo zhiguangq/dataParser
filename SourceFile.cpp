@@ -160,6 +160,19 @@ bool SourceFile::scanFiles(std::string path){
     return true;
 }
 
+bool SourceFile::CompTime(const FileInfo& pl, const FileInfo& pr)
+{
+    return atoll(pl.nameInlineTime.c_str()) < atoll(pr.nameInlineTime.c_str());
+}
+
+bool SourceFile::sortFiles(void){
+    for (int i = 0; i < TYPENUMBER; i++){
+        // 先把同一类型的文件安文件名里的时间从小到大排序
+        sort(m_interfaceFiles[i].begin(), m_interfaceFiles[i].end(), SourceFile::CompTime);
+    }
+    return true;
+}
+
 std::string SourceFile::utcToStream(std::string timestampStr){
     long long timestamp = atoll(timestampStr.c_str());
     Poco::Timestamp  ts = Poco::Timestamp::fromEpochTime(timestamp / 1000 + 28800);     // 东八区+8*60*60秒
@@ -235,11 +248,11 @@ bool SourceFile::moveFiles(std::string path){
             }
 
             // 移动所有Interface的文件到相应目录, error文件放入ERROR目录
-            long long lastFileTime = 0;
             for (int i = 0; i < TYPENUMBER + 1; i++){
 
-                Poco::FileOutputStream fos(path + "\\" + m_directory[i] + "\\log.txt");
+                Poco::FileOutputStream fos(path + "\\" + m_directory[i] + "\\log.txt",std::ios_base::app);
 
+                long long lastFileTime = 0;
                 for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[i].begin(); it != m_interfaceFiles[i].end(); it++){
                     boost::filesystem::path oldFile = it->directory + "\\" + it->name;
                     boost::filesystem::path newFile = path + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
@@ -253,12 +266,12 @@ bool SourceFile::moveFiles(std::string path){
                         parseFile(oldFile.string(), *it, lastFileTime);
                         it->name = renameNewFile.filename().string();
 
-                        printFileInfo(*it);
+                        //printFileInfo(*it);
                         std::string outLine = boost::lexical_cast<std::string>(it->id) + "|" + it->name + "|" + it->directory + "|" + it->type + "|" + it->nameInlineTime \
                             + "|" + it->firstLineTime + "|" + it->lastLineTime + "| " + boost::lexical_cast<std::string>(it->lineNumber)\
                             + "| " + boost::lexical_cast<std::string>(it->fileSize) + "| " + boost::lexical_cast<std::string>(it->gapTime) + "\r\n";
 
-                        //std::cout << outLine << std::endl;
+                        std::cout << outLine << std::endl;
                         fos.write(outLine.c_str(), outLine.length());
                     }
 

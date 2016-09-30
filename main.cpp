@@ -12,12 +12,23 @@ int main(int argc, char* argv[]){
 
 
     // 扫描目录下所有文件，如果有不符合规则的，停止并返回
+#ifdef _DEBUG
+    if (!sf.scanFiles("F:\\data\\input")){
+#else
     if (!sf.scanFiles(argv[1])){
+#endif
         return 1;
     }
+    
+    // 排序
+    sf.sortFiles();
 
     // 移动输入目录里所有文件到输出目录，如果相同类型目录里存在相同文件，以_a _b递加作后缀名
+#ifdef _DEBUG
+    if (!sf.moveFiles("F:\\data\\output")){
+#else
     if (!sf.moveFiles(argv[2])){
+#endif
         return 1;
     }
 
