@@ -250,7 +250,7 @@ bool SourceFile::moveFiles(std::string path){
             // 移动所有Interface的文件到相应目录, error文件放入ERROR目录
             for (int i = 0; i < TYPENUMBER + 1; i++){
 
-                Poco::FileOutputStream fos(path + "\\" + m_directory[i] + "\\log.txt",std::ios_base::app);
+                Poco::FileOutputStream fos(path + "\\" + m_directory[i] + "\\log.csv",std::ios_base::app);
 
                 long long lastFileTime = 0;
                 for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[i].begin(); it != m_interfaceFiles[i].end(); it++){
@@ -267,9 +267,16 @@ bool SourceFile::moveFiles(std::string path){
                         it->name = renameNewFile.filename().string();
 
                         //printFileInfo(*it);
-                        std::string outLine = boost::lexical_cast<std::string>(it->id) + "|" + it->name + "|" + it->directory + "|" + it->type + "|" + it->nameInlineTime \
-                            + "|" + it->firstLineTime + "|" + it->lastLineTime + "| " + boost::lexical_cast<std::string>(it->lineNumber)\
-                            + "| " + boost::lexical_cast<std::string>(it->fileSize) + "| " + boost::lexical_cast<std::string>(it->gapTime) + "\r\n";
+                        std::string outLine = boost::lexical_cast<std::string>(it->id) + "|" + \
+                                              it->directory + "|" + \
+                                              it->name + "|" + \
+                                              boost::lexical_cast<std::string>(it->fileSize) + "|" + \
+                                              it->type + "|" + \
+                                              boost::lexical_cast<std::string>(it->lineNumber) + "|" + \
+                                              it->nameInlineTime + "|" + \
+                                              it->firstLineTime + "|" + \
+                                              it->lastLineTime + "|" + \
+                                              boost::lexical_cast<std::string>(it->gapTime) + "\r\n";
 
                         std::cout << outLine << std::endl;
                         fos.write(outLine.c_str(), outLine.length());
