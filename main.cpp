@@ -1,3 +1,15 @@
+/**************************************************************************
+
+Copyright:
+
+Author: qiuzhiguang
+
+Date:2016-09-25
+
+Description: 文件处理扫描、移动、写日志文件
+
+**************************************************************************/
+
 #include <iostream>
 #include <fstream>
 
@@ -5,6 +17,8 @@
 
 int main(int argc, char* argv[]){
     SourceFile sf;
+	
+    // 二个输入参数，分别是输入目录路径、输出目录路径，暂时不支持中文
     if (argc != 3){
         std::cout << "Usage : dataParser.exe F:\\data\\input F:\\data\\output" << std::endl;
         return 1;
@@ -20,7 +34,7 @@ int main(int argc, char* argv[]){
         return 1;
     }
     
-    // 排序
+    // 根据文件名里的时间进行排序
     sf.sortFiles();
 
     // 移动输入目录里所有文件到输出目录，如果相同类型目录里存在相同文件，以_a _b递加作后缀名

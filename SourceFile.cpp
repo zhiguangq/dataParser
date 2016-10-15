@@ -1,3 +1,15 @@
+/**************************************************************************
+
+Copyright:
+
+Author: qiuzhiguang
+
+Date:2016-09-25
+
+Description: 文件处理扫描、移动、写日志文件
+
+**************************************************************************/
+
 #include "SourceFile.h"
 #include <iostream>
 #include <boost/regex.hpp>
@@ -23,18 +35,11 @@ SourceFile::SourceFile()
 {
 }
 
-
 SourceFile::~SourceFile()
 {
 }
 
 INTERFACE SourceFile::getFileType(std::string str){
-    //    095   UU
-    //    099   X2
-    //    098   UE_MR
-    //    092   CELL_MR
-    //    096   S1 - MME
-    //    103   S1 - U
     INTERFACE allType[TYPENUMBER] = { UU, X2, UE_MR, CELL_MR, S1_MME, S1_U };
     std::string typeName[TYPENUMBER] = { "095", "099", "098", "092", "096", "103" };
 
@@ -96,12 +101,11 @@ void SourceFile::printFileInfo(FileInfo& fi){
 
 // 扫描出所有文件
 bool SourceFile::scanFiles(std::string path){
-    if (boost::filesystem::exists(path)){
-        for (boost::filesystem::directory_iterator it(path); it != boost::filesystem::directory_iterator(); ++it){
-            if (boost::filesystem::is_directory(*it))
-            {
-                // 递归扫描子目录
-                this->scanFiles(it->path().string());
+    if (boost::filesystem::exists(path)){   // 如果目录存在
+        for (boost::filesystem::directory_iterator it(path); it != boost::filesystem::directory_iterator(); ++it){  // 查找目录里的所有文件和子目录
+            if (boost::filesystem::is_directory(*it))   // 如果是子目录
+            {                
+                this->scanFiles(it->path().string());   // 递归扫描子目录
             }
             else
             {
@@ -109,43 +113,42 @@ bool SourceFile::scanFiles(std::string path){
                 std::string fileName = it->path().filename().string();
 
                 boost::cmatch res;
-                boost::regex reg1("(\\d+)_(\\d+)_(\\d+).(\\w+)");
-                boost::regex reg2("(\\w+)_(\\d{3})(\\d+)_(\\d+).(\\w+)");
-                if (boost::regex_match(fileName.c_str(), res, reg1)){
+                boost::regex reg1("(\\d+)_(\\d+)_(\\d+).(\\w+)");           // 第一种文件名正则
+                boost::regex reg2("(\\w+)_(\\d{3})(\\d+)_(\\d+).(\\w+)");   // 第二种文件名正则
+                if (boost::regex_match(fileName.c_str(), res, reg1)){       // 符合第一种文件名正则
                     if (res.size() == 5 && getFileType(res[1]) != ErrorType){
                         FileInfo fi;
-                        fi.name = res[0];
-                        fi.directory = it->path().parent_path().string();
-                        fi.interface = getFileType(res[1]);
-                        fi.type = getFileTypeString(fi.interface);
-                        fi.nameInlineTime = res[2];
-                        fi.fileSize = boost::filesystem::file_size(it->path().string());
+                        fi.name = res[0];                                   // 文件名
+                        fi.directory = it->path().parent_path().string();   // 文件目录
+                        fi.interface = getFileType(res[1]);                 // Interface 枚举类型
+                        fi.type = getFileTypeString(fi.interface);          // Interface 类型字条串
+                        fi.nameInlineTime = res[2];                         // 文件名里的时间
+                        fi.fileSize = boost::filesystem::file_size(it->path().string());            // 文件大小
                         //printFileInfo(fi);
-                        m_interfaceFiles[fi.interface].push_back(fi);
+                        m_interfaceFiles[fi.interface].push_back(fi);       // 放入vecoter
                         continue;
                     }
                 }
                 else if (boost::regex_match(fileName.c_str(), res, reg2)){
                     if (res.size() == 6){
                         FileInfo fi;
-                        fi.name = res[0];
-                        fi.directory = it->path().parent_path().string();
-                        fi.interface = getFileType(res[2]);
-                        fi.type = getFileTypeString(fi.interface);
-                        fi.nameInlineTime = res[4];
-                        fi.fileSize = boost::filesystem::file_size(it->path().string());
+                        fi.name = res[0];                                   // 文件名
+                        fi.directory = it->path().parent_path().string();   // 文件目录
+                        fi.interface = getFileType(res[2]);                 // Interface 枚举类型
+                        fi.type = getFileTypeString(fi.interface);          // Interface 类型字条串
+                        fi.nameInlineTime = res[4];                         // 文件名里的时间
+                        fi.fileSize = boost::filesystem::file_size(it->path().string());            // 文件大小
                         //printFileInfo(fi);
-                        m_interfaceFiles[fi.interface].push_back(fi);
+                        m_interfaceFiles[fi.interface].push_back(fi);       // 放入vecoter
                         continue;
                     }
                 }
                 else{
                     // 匹配失败 ，放入ERROR目录
-                    m_errorSourceFileList.push_back(it->path().string());
                     FileInfo fi;
-                    fi.name = it->path().filename().string();
-                    fi.directory = it->path().parent_path().string();
-                    m_interfaceFiles[TYPENUMBER].push_back(fi);
+                    fi.name = it->path().filename().string();               // 文件名
+                    fi.directory = it->path().parent_path().string();       // 文件目录
+                    m_interfaceFiles[TYPENUMBER].push_back(fi);             // 放入vecoter
                     std::cout << "File is not support : " << it->path().string() << std::endl;
                 }
             }
@@ -177,11 +180,11 @@ std::string SourceFile::utcToStream(std::string timestampStr){
     long long timestamp = atoll(timestampStr.c_str());
     Poco::Timestamp  ts = Poco::Timestamp::fromEpochTime(timestamp / 1000 + 28800);     // 东八区+8*60*60秒
     Poco::DateTime dt(ts);
-    return  Poco::DateTimeFormatter::format(dt, Poco::DateTimeFormat::SORTABLE_FORMAT);
+    return  Poco::DateTimeFormatter::format(dt, Poco::DateTimeFormat::SORTABLE_FORMAT);  // 返回可读时间
 }
 
 std::string SourceFile::getTimestamp(std::string line, int clo){
-    boost::char_separator<char> sep("|");
+    boost::char_separator<char> sep("|");       // “|” 作为每列分隔
     typedef boost::tokenizer<boost::char_separator<char> > CustonTokenizer;
     CustonTokenizer tok(line, sep);
 
@@ -191,7 +194,7 @@ std::string SourceFile::getTimestamp(std::string line, int clo){
     {
         index++;
         if (index == clo){
-            utcTime = *beg;
+            utcTime = *beg;     // 找到相应列UTC时间
             break;
         }
     }
@@ -208,12 +211,14 @@ bool SourceFile::parseFile(std::string file, FileInfo& fi, long long &lastFileTi
     // 解释出第一行的时间
     if (fis.getline(str1, 2048)){
         ++lineCount;
-        fi.firstLineTime = utcToStream(getTimestamp(str1, getTimestampColumn(fi.interface)));
+        fi.firstLineTime = utcToStream(getTimestamp(str1, getTimestampColumn(fi.interface)));       // 找出第一行时间戳
         if (lastFileTime > 0){
-            fi.gapTime = atoll(getTimestamp(str1, getTimestampColumn(fi.interface)).c_str()) - lastFileTime;
+            fi.gapTime = atoll(getTimestamp(str1, getTimestampColumn(fi.interface)).c_str()) - lastFileTime;    // 与上一个文件时间戳gap
         }
         
     }
+    
+    // 循环所有行，得出行数
     while (fis.getline(str1, 2048)){
         ++lineCount;
         if (!fis.getline(str2, 2048)){  // 主要是源文件可能最后一行为空的，这样做是为了循环出来时能有最后一行数据
@@ -226,11 +231,11 @@ bool SourceFile::parseFile(std::string file, FileInfo& fi, long long &lastFileTi
     if (lineCount > 0){
         std::string time1 = getTimestamp(str1, getTimestampColumn(fi.interface));
         std::string time2 = getTimestamp(str2, getTimestampColumn(fi.interface));
-        fi.lastLineTime = utcToStream((std::strcmp(time1.c_str(), time2.c_str()) > 0) ? time1 : time2);
-        lastFileTime = atoll((std::strcmp(time1.c_str(), time2.c_str()) > 0) ? time1.c_str() : time2.c_str());
+        fi.lastLineTime = utcToStream((std::strcmp(time1.c_str(), time2.c_str()) > 0) ? time1 : time2); // 最后一行和倒数第二行时间比较
+        lastFileTime = atoll((std::strcmp(time1.c_str(), time2.c_str()) > 0) ? time1.c_str() : time2.c_str()); // 修改lastFileTime
     }
 
-    fi.lineNumber = lineCount;
+    fi.lineNumber = lineCount;  // 文件行数
 
     return true;
 }
@@ -253,17 +258,20 @@ bool SourceFile::moveFiles(std::string path){
                 Poco::FileOutputStream fos(path + "\\" + m_directory[i] + "\\log.csv",std::ios_base::app);
 
                 long long lastFileTime = 0;
+                // 循环每个Interface类型的所有文件
                 for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[i].begin(); it != m_interfaceFiles[i].end(); it++){
+                    // 移动某个文件
                     boost::filesystem::path oldFile = it->directory + "\\" + it->name;
                     boost::filesystem::path newFile = path + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
                     boost::filesystem::path renameNewFile = newFile;
                     for (char c = 'a'; boost::filesystem::exists(renameNewFile); c++){
+                        // 如果移动目标目录存在相同文件，就重命名文件_a _b，依此类推
                         renameNewFile = boost::filesystem::path(newFile).replace_extension().string() + "_" + c + newFile.extension().string();
                     }
 
-                    if (i < TYPENUMBER){
+                    if (i < TYPENUMBER){    // Interface 类型类型文件写log文件
                         // 解释文件
-                        parseFile(oldFile.string(), *it, lastFileTime);
+                        parseFile(oldFile.string(), *it, lastFileTime); //解释文件，主要是取得文件行数和gap时间
                         it->name = renameNewFile.filename().string();
 
                         //printFileInfo(*it);
@@ -279,15 +287,14 @@ bool SourceFile::moveFiles(std::string path){
                                               boost::lexical_cast<std::string>(it->gapTime) + "\r\n";
 
                         std::cout << outLine << std::endl;
-                        fos.write(outLine.c_str(), outLine.length());
+                        fos.write(outLine.c_str(), outLine.length());       // 写日志文件
                     }
 
-                    boost::filesystem::rename(oldFile, renameNewFile);
+                    boost::filesystem::rename(oldFile, renameNewFile);      // 移动interface文件
                 }
             }
         }
         catch (...){
-            // TODO
             std::cout << "exection : " << std::endl;
         }
     }
