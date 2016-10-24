@@ -262,7 +262,21 @@ bool SourceFile::moveFiles(std::string path){
                 for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[i].begin(); it != m_interfaceFiles[i].end(); it++){
                     // 移动某个文件
                     boost::filesystem::path oldFile = it->directory + "\\" + it->name;
-                    boost::filesystem::path newFile = path + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
+
+                    boost::filesystem::path newFile;
+                    // 对于Interface类型文件，需要整理出三级时间目录
+                    if (i < TYPENUMBER){
+                        // 创建不存在的时间目录
+                        if (!boost::filesystem::exists(path + "\\" + m_directory[i] + "\\" + it->nameInlineTime.substr(0,8))){
+                            boost::filesystem::create_directory(path + "\\" + m_directory[i] + "\\" + it->nameInlineTime.substr(0, 8));
+                        }
+
+                        newFile = path + "\\" + m_directory[i] + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + oldFile.filename().string();
+                    }
+                    else{
+                        newFile = path + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
+                    }
+                    //boost::filesystem::path newFile = path + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
                     boost::filesystem::path renameNewFile = newFile;
                     for (char c = 'a'; boost::filesystem::exists(renameNewFile); c++){
                         // 如果移动目标目录存在相同文件，就重命名文件_a _b，依此类推
