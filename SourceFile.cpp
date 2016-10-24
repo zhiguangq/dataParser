@@ -245,18 +245,8 @@ bool SourceFile::parseFile(std::string file, FileInfo& fi, long long &lastFileTi
 bool SourceFile::moveFiles(std::string path){
     if (boost::filesystem::exists(path)){
         try{
-            // 创建所有Interface的子目录及error目录
-            for (int i = 0; i < (TYPENUMBER + 1); i++){
-                if (!boost::filesystem::exists(path + "\\" + m_directory[i]))  {
-                    boost::filesystem::create_directory(path + "\\" + m_directory[i]);
-                }
-            }
-
             // 移动所有Interface的文件到相应目录, error文件放入ERROR目录
-            for (int i = 0; i < TYPENUMBER + 1; i++){
-
-                Poco::FileOutputStream fos(path + "\\" + m_directory[i] + "\\log.csv",std::ios_base::app);
-
+            for (int i = 0; i < TYPENUMBER + 1; i++){           
                 long long lastFileTime = 0;
                 // 循环每个Interface类型的所有文件
                 for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[i].begin(); it != m_interfaceFiles[i].end(); it++){
@@ -267,13 +257,23 @@ bool SourceFile::moveFiles(std::string path){
                     // 对于Interface类型文件，需要整理出三级时间目录
                     if (i < TYPENUMBER){
                         // 创建不存在的时间目录
-                        if (!boost::filesystem::exists(path + "\\" + m_directory[i] + "\\" + it->nameInlineTime.substr(0,8))){
-                            boost::filesystem::create_directory(path + "\\" + m_directory[i] + "\\" + it->nameInlineTime.substr(0, 8));
+                        if (!boost::filesystem::exists(path + "\\" + it->nameInlineTime.substr(0,8))){
+                            boost::filesystem::create_directory(path + "\\" + it->nameInlineTime.substr(0, 8));
                         }
 
-                        newFile = path + "\\" + m_directory[i] + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + oldFile.filename().string();
+                        // 创建所有Interface的子目录及error目录
+                        if (!boost::filesystem::exists(path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i]))  {
+                            boost::filesystem::create_directory(path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i]);
+                        }                        
+
+                        newFile = path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
                     }
                     else{
+                        // Error 目录
+                        if (!boost::filesystem::exists(path + "\\" + m_directory[i]))  {
+                                boost::filesystem::create_directory(path + "\\" + m_directory[i]);
+                            }
+
                         newFile = path + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
                     }
                     //boost::filesystem::path newFile = path + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
@@ -284,6 +284,7 @@ bool SourceFile::moveFiles(std::string path){
                     }
 
                     if (i < TYPENUMBER){    // Interface 类型类型文件写log文件
+                        Poco::FileOutputStream fos(path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i] + "\\log.csv", std::ios_base::app);
                         // 解释文件
                         parseFile(oldFile.string(), *it, lastFileTime); //解释文件，主要是取得文件行数和gap时间
                         it->name = renameNewFile.filename().string();
