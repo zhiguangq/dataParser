@@ -19,6 +19,8 @@ Description: 文件处理扫描、移动、写日志文件
 #include <boost/lexical_cast.hpp>       
 #include <boost/tokenizer.hpp>  
 #include <boost/algorithm/string.hpp>
+#include <boost/algorithm/searching/boyer_moore.hpp>
+#include <boost/algorithm/searching/knuth_morris_pratt.hpp>
 
 #include "Poco/File.h"
 #include "Poco/Path.h"
@@ -176,6 +178,52 @@ bool SourceFile::sortFiles(void){
     return true;
 }
 
+bool SourceFile::getIMSI(void){
+    boost::unordered_map<std::string, int> s1u_imsiMap;
+    
+    std::cout << "-----------parse S1_U file, then add to map1------------------" << std::endl;
+    for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[S1_U].begin(); it != m_interfaceFiles[S1_U].end(); it++){  // S1_U
+        boost::filesystem::path oldFile = it->directory + "\\" + it->name;
+        std::cout << oldFile << std::endl;
+        Poco::FileInputStream fis(oldFile.string());
+        char str[4096];
+
+        // 循环所有行，得出行数
+        while (fis.getline(str, 4096)){
+            std::string uri = getTimestamp(str, 60);
+            std::string::const_iterator it1 = boost::algorithm::boyer_moore_search<std::string, std::string>(uri, "lat");
+            std::string::const_iterator it2 = boost::algorithm::boyer_moore_search<std::string, std::string>(uri, "lon");
+            if (it1 != uri.end() && it2 != uri.end()){
+                // 如果存在lat 和 lon 后，把imsi字段加入进表
+                std::string imsi = getTimestamp(str, 6);
+                if (s1u_imsiMap.find(imsi) == s1u_imsiMap.end()){    // 如果imsi是第一次出现，就进入map
+                    s1u_imsiMap[imsi] = 1;
+                }
+            }             
+        }
+        std::cout << "Now map1 size = " << s1u_imsiMap.size() << std::endl;
+    }
+
+    std::cout << "-----------parse UE_MR file, then \"Logic and \" whth map1 to map3 ------------------" << std::endl;
+    for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[UE_MR].begin(); it != m_interfaceFiles[UE_MR].end(); it++){  // UE_MR
+        boost::filesystem::path oldFile = it->directory + "\\" + it->name;
+        std::cout << oldFile << std::endl;
+        Poco::FileInputStream fis(oldFile.string());
+        char str[4096];
+
+        // 循环所有行，得出行数
+        while (fis.getline(str, 4096)){
+            std::string imsi = getTimestamp(str, 6);
+            if (s1u_imsiMap.find(imsi) != s1u_imsiMap.end()){
+                m_imsiMap[imsi] = 1;
+            }
+        }
+        std::cout << "Now map3 size = " << m_imsiMap.size() << std::endl;
+    }
+
+    return true;
+}
+
 std::string SourceFile::utcToStream(std::string timestampStr){
     long long timestamp = atoll(timestampStr.c_str());
     Poco::Timestamp  ts = Poco::Timestamp::fromEpochTime(timestamp / 1000 + 28800);     // 东八区+8*60*60秒
@@ -240,6 +288,37 @@ bool SourceFile::parseFile(std::string file, FileInfo& fi, long long &lastFileTi
     return true;
 }
 
+bool SourceFile::copyFiles(std::string srcfile, std::string destfile, FileInfo& fi, long long &lastFileTime){
+    Poco::FileInputStream fis(srcfile);
+    Poco::FileOutputStream fos(destfile, std::ios_base::app);
+
+    int lineCount = 0;
+
+    char str[4096];
+    char lastStr[4096];
+    while (fis.getline(str, 4096)){
+        std::string imsi = getTimestamp(str, 6);
+        if (m_imsiMap.find(imsi) != m_imsiMap.end()){
+            ++lineCount;
+            if (lineCount == 1){
+                fi.firstLineTime = utcToStream(getTimestamp(str, getTimestampColumn(fi.interface)));       // 找出第一行时间戳
+            }
+            std::strcpy(lastStr, str);
+            fos.write(str, std::strlen(str));       // 写新文件
+        }
+    }
+    fos.close();
+
+    std::string time = getTimestamp(lastStr, getTimestampColumn(fi.interface));
+    fi.lastLineTime = utcToStream(time);                                        // 找出最后一行时间戳
+    lastFileTime = atoll(time.c_str());                                         // 修改lastFileTime  
+
+    fi.fileSize = boost::filesystem::file_size(destfile);            // 文件大小
+
+    fi.lineNumber = lineCount;
+    return true;
+}
+
 
 // 移动文件到相应目录
 bool SourceFile::moveFiles(std::string path){
@@ -286,7 +365,8 @@ bool SourceFile::moveFiles(std::string path){
                     if (i < TYPENUMBER){    // Interface 类型类型文件写log文件
                         Poco::FileOutputStream fos(path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i] + "\\log.csv", std::ios_base::app);
                         // 解释文件
-                        parseFile(oldFile.string(), *it, lastFileTime); //解释文件，主要是取得文件行数和gap时间
+                        //parseFile(oldFile.string(), *it, lastFileTime); //解释文件，主要是取得文件行数和gap时间
+                        copyFiles(oldFile.string(), renameNewFile.string(), *it, lastFileTime);
                         it->name = renameNewFile.filename().string();
 
                         //printFileInfo(*it);
@@ -304,8 +384,9 @@ bool SourceFile::moveFiles(std::string path){
                         std::cout << outLine << std::endl;
                         fos.write(outLine.c_str(), outLine.length());       // 写日志文件
                     }
-
-                    boost::filesystem::rename(oldFile, renameNewFile);      // 移动interface文件
+                    else{
+                        boost::filesystem::rename(oldFile, renameNewFile);      // 移动Error文件
+                    }
                 }
             }
         }

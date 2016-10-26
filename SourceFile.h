@@ -15,6 +15,7 @@ Description: 文件处理扫描、移动、写日志文件
 #include <string>
 #include <vector>
 #include <map>
+#include<boost/unordered_map.hpp>
 
 #define TYPENUMBER 6
 
@@ -77,6 +78,15 @@ public:
     *Return : 	 true 排序成功
     */
     bool sortFiles(void);
+
+    /*
+    *Summary: 获取IMSI列表，
+    *         S1U文件里URI字段里面包含有lat和lon关键字的行， 取这些行的IMSI字段去重复后作为表1
+    *         UMER文件里面，取出所有的IMSI字段并去重复后作为表2
+    *         表1和表2求交集，得到最终表3
+    *Return : true 获取imsi表成功         
+    */
+    bool getIMSI(void);
     
     /*
     *Summary:    移动文件到输出目录
@@ -160,7 +170,10 @@ private:
     */
     bool parseFile(std::string file, FileInfo& fi, long long &lastFileTime);
 
+    bool copyFiles(std::string srcfile, std::string destfile, FileInfo& fi, long long &lastFileTime);
+
     std::vector<class FileInfo> m_interfaceFiles[TYPENUMBER + 1];   // 每个Interface文件相关数据结构体Verctor
+    boost::unordered_map<std::string, int> m_imsiMap;
 };
 
 #endif

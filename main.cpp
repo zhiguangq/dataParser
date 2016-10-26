@@ -37,6 +37,8 @@ int main(int argc, char* argv[]){
     // 根据文件名里的时间进行排序
     sf.sortFiles();
 
+    sf.getIMSI();
+
     // 移动输入目录里所有文件到输出目录，如果相同类型目录里存在相同文件，以_a _b递加作后缀名
 #ifdef _DEBUG
     if (!sf.moveFiles("F:\\data\\output")){
@@ -45,6 +47,8 @@ int main(int argc, char* argv[]){
 #endif
         return 1;
     }
+
+    std::cout << "------------------------- end --------------------------------" << std::endl;
 
     return 0;
 }
