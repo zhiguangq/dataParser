@@ -16,6 +16,7 @@ Description: 文件处理扫描、移动、写日志文件
 #include <vector>
 #include <map>
 #include<boost/unordered_map.hpp>
+#include "Poco/NotificationQueue.h"
 
 #define TYPENUMBER 6
 
@@ -85,8 +86,8 @@ public:
     *         UMER文件里面，取出所有的IMSI字段并去重复后作为表2
     *         表1和表2求交集，得到最终表3
     *Return : true 获取imsi表成功         
-    */
-    bool getIMSI(std::string path);
+    */    
+    bool getIMSI(std::string path, Poco::NotificationQueue& taskQueue, Poco::NotificationQueue& resultQueue);
     
     /*
     *Summary:    移动文件到输出目录

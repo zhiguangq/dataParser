@@ -15,18 +15,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="get_imsi.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="SourceFile.cpp">
+    <ClCompile Include="..\SourceFile.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="GetImsiWorker.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="SourceFile.h">
+    <ClInclude Include="..\SourceFile.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="baseHeader.h">
+    <ClInclude Include="GetImsiWorker.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

@@ -9,7 +9,8 @@ Date:2016-09-25
 Description: 文件处理扫描、移动、写日志文件
 
 **************************************************************************/
-
+              \
+#include "baseHeader.h"
 #include "SourceFile.h"
 #include <iostream>
 #include <boost/regex.hpp>
@@ -181,33 +182,50 @@ bool SourceFile::sortFiles(void){
     return true;
 }
 
-bool SourceFile::getIMSI(std::string path){
+bool SourceFile::getIMSI(std::string path, Poco::NotificationQueue& taskQueue, Poco::NotificationQueue& resultQueue){
     boost::unordered_map<std::string, int> s1u_imsiMap;
     
-    std::cout << "-----------parse S1_U file (" << m_interfaceFiles[S1_U].size() << "), then add to map1------------------" << std::endl;
+    std::cout << "--Parse S1_U file (" << m_interfaceFiles[S1_U].size() << "), then add to map1----------------------------" << std::endl;
     int file_number = 0;
     for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[S1_U].begin(); it != m_interfaceFiles[S1_U].end(); it++){  // S1_U
+        Poco::Timestamp now;
         boost::filesystem::path oldFile = it->directory + "\\" + it->name;
         std::cout << "parse file (" << m_interfaceFiles[S1_U].size() - file_number++ << ") : " << oldFile << std::endl;
         Poco::FileInputStream fis(oldFile.string());
         char str[4096];
 
+        int lineNumber = 0;
         while (fis.getline(str, 4096)){
-            std::string uri = getTimestamp(str, 60);
-            std::string::const_iterator it1 = boost::algorithm::boyer_moore_search<std::string, std::string>(uri, "lat");
-            std::string::const_iterator it2 = boost::algorithm::boyer_moore_search<std::string, std::string>(uri, "lon");
-            if (it1 != uri.end() && it2 != uri.end()){
-                // 如果存在lat 和 lon 后，把imsi字段加入进表
-                std::string imsi = getTimestamp(str, 6);
-                if (s1u_imsiMap.find(imsi) == s1u_imsiMap.end()){    // 如果imsi是第一次出现，就进入map
-                    s1u_imsiMap[imsi] = 1;
-                }
-            }             
+            lineNumber++;
+            boost::shared_ptr<MyData> data(new MyData());
+            std::strcpy(data->getData(), str);
+            taskQueue.enqueueNotification(new TaskNotification(data));
         }
-        std::cout << "Now map1 size = " << s1u_imsiMap.size() << std::endl;
+
+        Poco::AutoPtr<Poco::Notification> pNf(resultQueue.waitDequeueNotification());
+        while (pNf)
+        {
+            ResultNotification* pWorkNf = dynamic_cast<ResultNotification*>(pNf.get());
+            if (pWorkNf)
+            {
+                lineNumber--;
+                if (!pWorkNf->imsi().empty()){
+                    if (s1u_imsiMap.find(pWorkNf->imsi()) == s1u_imsiMap.end()){    // 如果imsi是第一次出现，就进入map
+                        s1u_imsiMap[pWorkNf->imsi()] = 1;
+                    }
+                }
+            }
+            if (lineNumber <= 0){
+                break;
+            }
+            pNf = resultQueue.waitDequeueNotification();
+        }
+
+        Poco::Timestamp::TimeDiff diff = now.elapsed();
+        std::cout << "Done with (" << (float)diff / 1000000  << ") second.  Now map1 size = " << s1u_imsiMap.size() << std::endl;
     }
 
-    std::cout << "-----------parse UE_MR file (" << m_interfaceFiles[UE_MR].size() << "), then \"Logic and \" whth map1 to map3 ------------------" << std::endl;
+    std::cout << "--Parse UE_MR file (" << m_interfaceFiles[UE_MR].size() << "), then \"Logic and \" whth map1 to map3 -------" << std::endl;
     file_number = 0;
     for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[UE_MR].begin(); it != m_interfaceFiles[UE_MR].end(); it++){  // UE_MR
         boost::filesystem::path oldFile = it->directory + "\\" + it->name;
@@ -221,7 +239,7 @@ bool SourceFile::getIMSI(std::string path){
                 m_imsiMap[imsi] = 1;
             }
         }
-        std::cout << "Now map3 size = " << m_imsiMap.size() << std::endl;
+        std::cout << "--Now map3 size = " << m_imsiMap.size() << std::endl;
     }
 
     Poco::FileOutputStream fos(path + "\\" + "imsi.txt");
