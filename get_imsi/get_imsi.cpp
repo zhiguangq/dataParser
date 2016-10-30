@@ -34,7 +34,7 @@ int main(int argc, char* argv[]){
     int threadNumber = 4;
 #else
     int threadNumber = atoi(argv[3]) - 1;
-    if (threadNumber == 0){
+    if (threadNumber <= 0){
         std::cout << "Please input right thread." << std::endl;
         return 1;
     }
