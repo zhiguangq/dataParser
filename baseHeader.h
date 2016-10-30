@@ -70,13 +70,13 @@ private:
 class CopyFileResultNotification : public Poco::Notification
 {
 public:
-    CopyFileResultNotification(float time) : m_timeUse(time) {}
-    float timeUse() const
+    CopyFileResultNotification(std::string srcfile) : m_srcfile(srcfile) {}
+    std::string getSrcFile() const
     {
-        return m_timeUse;
+        return m_srcfile;
     }
 private:
-    float m_timeUse;
+    std::string m_srcfile;
 };
 
 #endif

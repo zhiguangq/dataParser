@@ -31,6 +31,27 @@ std::string CopyFileWorker::getColumn(std::string line, int clo){   // clo‘Ω¥Û£¨
     return cloumn;
 }
 
+CopyFileWorker::CopyFileWorker(Poco::NotificationQueue& taskQueue, Poco::NotificationQueue& resultQueue, std::string imsiPath)
+    : m_taskQueue(taskQueue)
+    , m_resultQueue(resultQueue){
+    getIMSIMap(imsiPath);
+}
+
+bool CopyFileWorker::getIMSIMap(std::string path){
+    try{
+        Poco::FileInputStream fis(path);
+        char str[4096];
+        while (fis.getline(str, 4096)){
+            m_imsiMap[std::string(str, 15)] = 1;
+        }
+    }
+    catch (...){
+        return false;
+    }
+
+    return true;
+}
+
 void CopyFileWorker::run()
 {
     Poco::AutoPtr<Poco::Notification> pNf(m_taskQueue.waitDequeueNotification());
@@ -43,7 +64,7 @@ void CopyFileWorker::run()
             Poco::FileInputStream fis(pWorkNf->getSrcFile());
             Poco::FileOutputStream fos(pWorkNf->getDestFile());
 
-            //std::cout << "(" << m_totalFile-- << ") filtering file : " << srcfile << std::endl;
+            //std::cout << "filtering file : " << pWorkNf->getSrcFile() << std::endl;
             char str[4096];
             while (fis.getline(str, 4096)){
                 std::string imsi = getColumn(str, 6);
@@ -52,9 +73,9 @@ void CopyFileWorker::run()
                 }
             }
             fos.close();
+            m_resultQueue.enqueueNotification(new CopyFileResultNotification(pWorkNf->getSrcFile()));
         }
-
-        m_resultQueue.enqueueNotification(new CopyFileResultNotification(4));
+        
         pNf = m_taskQueue.waitDequeueNotification();
     }
 }

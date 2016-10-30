@@ -16,6 +16,7 @@ Description: 文件处理扫描、移动、写日志文件
 #include "SourceFile.h"
 
 int main(int argc, char* argv[]){
+#if 0
     SourceFile sf;
 	
     // 二个输入参数，分别是输入目录路径、输出目录路径，暂时不支持中文
@@ -53,6 +54,6 @@ int main(int argc, char* argv[]){
     }
 
     std::cout << "------------------------- end --------------------------------" << std::endl;
-
+#endif
     return 0;
 }

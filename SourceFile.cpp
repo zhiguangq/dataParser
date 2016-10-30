@@ -349,7 +349,7 @@ bool SourceFile::copyFiles(std::string srcfile, std::string destfile, FileInfo& 
 
 
 // 移动文件到相应目录
-bool SourceFile::moveFiles(std::string path){
+bool SourceFile::moveFiles(std::string path, Poco::NotificationQueue& taskQueue, Poco::NotificationQueue& resultQueue){
     if (boost::filesystem::exists(path)){
         try{
             // 移动所有Interface的文件到相应目录, error文件放入ERROR目录
@@ -385,7 +385,9 @@ bool SourceFile::moveFiles(std::string path){
                     //Poco::FileOutputStream fos(path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i] + "\\log.csv", std::ios_base::app);
                     // 解释文件
                     //parseFile(oldFile.string(), *it, lastFileTime); //解释文件，主要是取得文件行数和gap时间
-                    copyFiles(oldFile.string(), renameNewFile.string(), *it, lastFileTime);
+                    //copyFiles(oldFile.string(), renameNewFile.string(), *it, lastFileTime);
+                    taskQueue.enqueueNotification(new CopyFileTaskNotification(oldFile.string(), renameNewFile.string()));
+
                     it->name = renameNewFile.filename().string();
 
                     //printFileInfo(*it);
@@ -405,6 +407,20 @@ bool SourceFile::moveFiles(std::string path){
                     fos.write(outLine.c_str(), outLine.length());       // 写日志文件   
                     */
                 }
+            }
+
+            Poco::AutoPtr<Poco::Notification> pNf(resultQueue.waitDequeueNotification());
+            while (pNf)
+            {
+                CopyFileResultNotification* pWorkNf = dynamic_cast<CopyFileResultNotification*>(pNf.get());
+                if (pWorkNf){
+                    m_totalFile--;
+                    std::cout << "(" << m_totalFile << ")"  << pWorkNf->getSrcFile() << " finish." << std::endl;
+                }
+                if (m_totalFile <= 0){
+                    break;
+                }
+                pNf = resultQueue.waitDequeueNotification();
             }
         }
         catch (...){

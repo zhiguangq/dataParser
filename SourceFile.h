@@ -95,7 +95,7 @@ public:
     * path:      输出目录
     *Return : 	 true 排序成功
     */
-    bool moveFiles(std::string path);
+    bool moveFiles(std::string path, Poco::NotificationQueue& taskQueue, Poco::NotificationQueue& resultQueue);
 
     bool getIMSIMap(std::string path);
 private:

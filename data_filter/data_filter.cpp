@@ -14,6 +14,10 @@ Description: 文件处理扫描、移动、写日志文件
 #include <fstream>
 
 #include "..\SourceFile.h"
+#include "CopyFileWorker.h"
+#include "Poco/NotificationQueue.h"
+#include "Poco/ThreadPool.h"
+#include "Poco/AutoPtr.h" 
 
 int main(int argc, char* argv[]){
     SourceFile sf;
@@ -54,11 +58,19 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
+    Poco::NotificationQueue taskQueue;
+    Poco::NotificationQueue resultQueue;
+    Poco::ThreadPool *tp = new Poco::ThreadPool(2, 32);
+    for (int i = 0; i < threadNumber; i++){
+        CopyFileWorker* worker = new CopyFileWorker(taskQueue, resultQueue, argv[1]);
+        tp->start(*worker);
+    }
+
     // 移动输入目录里所有文件到输出目录，如果相同类型目录里存在相同文件，以_a _b递加作后缀名
 #ifdef _DEBUG
     if (!sf.moveFiles("F:\\data\\output")){
 #else
-    if (!sf.moveFiles(argv[3])){
+    if (!sf.moveFiles(argv[3], taskQueue, resultQueue)){
 #endif
         return 1;
     }
