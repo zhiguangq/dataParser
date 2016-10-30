@@ -11,10 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{1A73CB7A-2CA8-4E5D-8069-D3104E8042D2}</ProjectGuid>
+    <ProjectGuid>{C33CBED7-AB68-4CEA-84E9-2A0DA4529223}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>dataParser</RootNamespace>
-    <ProjectName>dataParser</ProjectName>
+    <RootNamespace>data_filter</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -54,12 +53,10 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>F:\3rd-party\poco-1.7.5\include;C:\local\boost_1_56_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>F:\3rd-party\poco-1.7.5\lib;C:\local\boost_1_56_0\lib32-msvc-12.0;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -83,12 +80,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="SourceFile.cpp" />
+    <ClCompile Include="..\SourceFile.cpp" />
+    <ClCompile Include="CopyFileWorker.cpp" />
+    <ClCompile Include="data_filter.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="baseHeader.h" />
-    <ClInclude Include="SourceFile.h" />
+    <ClInclude Include="..\SourceFile.h" />
+    <ClInclude Include="CopyFileWorker.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

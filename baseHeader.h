@@ -50,4 +50,33 @@ private:
     std::string m_imsi;
 };
 
+class CopyFileTaskNotification : public Poco::Notification
+{
+public:
+    CopyFileTaskNotification(std::string srcfile, std::string destfile) : m_srcfile(srcfile), m_destfile(destfile){}
+    std::string getSrcFile() const
+    {
+        return m_srcfile;
+    }
+    std::string getDestFile() const
+    {
+        return m_destfile;
+    }
+private:
+    std::string m_srcfile;
+    std::string m_destfile;
+};
+
+class CopyFileResultNotification : public Poco::Notification
+{
+public:
+    CopyFileResultNotification(float time) : m_timeUse(time) {}
+    float timeUse() const
+    {
+        return m_timeUse;
+    }
+private:
+    float m_timeUse;
+};
+
 #endif
