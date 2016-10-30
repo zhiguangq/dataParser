@@ -19,9 +19,18 @@ int main(int argc, char* argv[]){
     SourceFile sf;
 	
     // 二个输入参数，分别是输入目录路径、输出目录路径，暂时不支持中文
-    if (argc != 3){
-        std::cout << "Usage : dataParser.exe F:\\data\\input F:\\data\\output" << std::endl;
+    if (argc != 4){
+        std::cout << "Usage : data_filter.exe F:\\data\\imsi.txt F:\\data\\input F:\\data\\output" << std::endl;
         return 1;
+    }
+
+#ifdef _DEBUG
+    if (!sf.getIMSIMap("F:\\data\\output\\imsi.txt")){
+#else
+    if (!sf.getIMSIMap(argv[1])){
+#endif     
+        std::cout << "Can not find imsi file : " << argv[1] << std::endl;
+        return false;
     }
 
 
@@ -29,21 +38,16 @@ int main(int argc, char* argv[]){
 #ifdef _DEBUG
     if (!sf.scanFiles("F:\\data\\input")){
 #else
-    if (!sf.scanFiles(argv[1])){
+    if (!sf.scanFiles(argv[2])){
 #endif
         return 1;
     }
-    
-    // 根据文件名里的时间进行排序
-    sf.sortFiles();
-
-    sf.getIMSI();
-
+                               
     // 移动输入目录里所有文件到输出目录，如果相同类型目录里存在相同文件，以_a _b递加作后缀名
 #ifdef _DEBUG
     if (!sf.moveFiles("F:\\data\\output")){
 #else
-    if (!sf.moveFiles(argv[2])){
+    if (!sf.moveFiles(argv[3])){
 #endif
         return 1;
     }

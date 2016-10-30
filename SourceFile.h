@@ -86,7 +86,7 @@ public:
     *         表1和表2求交集，得到最终表3
     *Return : true 获取imsi表成功         
     */
-    bool getIMSI(void);
+    bool getIMSI(std::string path);
     
     /*
     *Summary:    移动文件到输出目录
@@ -95,6 +95,8 @@ public:
     *Return : 	 true 排序成功
     */
     bool moveFiles(std::string path);
+
+    bool getIMSIMap(std::string path);
 private:
     /*
     *Summary:    根据Interface文本，获取Interface的枚举类型
@@ -174,6 +176,7 @@ private:
 
     std::vector<class FileInfo> m_interfaceFiles[TYPENUMBER + 1];   // 每个Interface文件相关数据结构体Verctor
     boost::unordered_map<std::string, int> m_imsiMap;
+    int m_totalFile;
 };
 
 #endif

@@ -35,6 +35,7 @@ std::string m_directory[TYPENUMBER + 1] = { "UU", "X2", "UE_MR", "CELL_MR", "S1-
 
 SourceFile::SourceFile()
 {
+    m_totalFile = 0;
 }
 
 SourceFile::~SourceFile()
@@ -128,6 +129,7 @@ bool SourceFile::scanFiles(std::string path){
                         fi.fileSize = boost::filesystem::file_size(it->path().string());            // 文件大小
                         //printFileInfo(fi);
                         m_interfaceFiles[fi.interface].push_back(fi);       // 放入vecoter
+                        m_totalFile++;
                         continue;
                     }
                 }
@@ -142,6 +144,7 @@ bool SourceFile::scanFiles(std::string path){
                         fi.fileSize = boost::filesystem::file_size(it->path().string());            // 文件大小
                         //printFileInfo(fi);
                         m_interfaceFiles[fi.interface].push_back(fi);       // 放入vecoter
+                        m_totalFile++;
                         continue;
                     }
                 }
@@ -178,17 +181,17 @@ bool SourceFile::sortFiles(void){
     return true;
 }
 
-bool SourceFile::getIMSI(void){
+bool SourceFile::getIMSI(std::string path){
     boost::unordered_map<std::string, int> s1u_imsiMap;
     
-    std::cout << "-----------parse S1_U file, then add to map1------------------" << std::endl;
+    std::cout << "-----------parse S1_U file (" << m_interfaceFiles[S1_U].size() << "), then add to map1------------------" << std::endl;
+    int file_number = 0;
     for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[S1_U].begin(); it != m_interfaceFiles[S1_U].end(); it++){  // S1_U
         boost::filesystem::path oldFile = it->directory + "\\" + it->name;
-        std::cout << oldFile << std::endl;
+        std::cout << "parse file (" << m_interfaceFiles[S1_U].size() - file_number++ << ") : " << oldFile << std::endl;
         Poco::FileInputStream fis(oldFile.string());
         char str[4096];
 
-        // 循环所有行，得出行数
         while (fis.getline(str, 4096)){
             std::string uri = getTimestamp(str, 60);
             std::string::const_iterator it1 = boost::algorithm::boyer_moore_search<std::string, std::string>(uri, "lat");
@@ -204,14 +207,14 @@ bool SourceFile::getIMSI(void){
         std::cout << "Now map1 size = " << s1u_imsiMap.size() << std::endl;
     }
 
-    std::cout << "-----------parse UE_MR file, then \"Logic and \" whth map1 to map3 ------------------" << std::endl;
+    std::cout << "-----------parse UE_MR file (" << m_interfaceFiles[UE_MR].size() << "), then \"Logic and \" whth map1 to map3 ------------------" << std::endl;
+    file_number = 0;
     for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[UE_MR].begin(); it != m_interfaceFiles[UE_MR].end(); it++){  // UE_MR
         boost::filesystem::path oldFile = it->directory + "\\" + it->name;
-        std::cout << oldFile << std::endl;
+        std::cout << "parse file (" << m_interfaceFiles[UE_MR].size() - file_number++ << ") : " << oldFile << std::endl;
         Poco::FileInputStream fis(oldFile.string());
         char str[4096];
 
-        // 循环所有行，得出行数
         while (fis.getline(str, 4096)){
             std::string imsi = getTimestamp(str, 6);
             if (s1u_imsiMap.find(imsi) != s1u_imsiMap.end()){
@@ -220,6 +223,27 @@ bool SourceFile::getIMSI(void){
         }
         std::cout << "Now map3 size = " << m_imsiMap.size() << std::endl;
     }
+
+    Poco::FileOutputStream fos(path + "\\" + "imsi.txt");
+    for (boost::unordered_map<std::string, int>::iterator it = m_imsiMap.begin(); it != m_imsiMap.end(); it++){
+        std::string outLine = it->first + "\r\n";
+        fos.write(outLine.c_str(), outLine.length());       // 写日志文件
+    }
+
+    return true;
+}
+
+bool SourceFile::getIMSIMap(std::string path){
+    try{
+        Poco::FileInputStream fis(path);
+        char str[4096];
+        while (fis.getline(str, 4096)){
+            m_imsiMap[std::string(str,15)] = 1;
+        }
+    }
+    catch (...){
+        return false;                                        
+    }    
 
     return true;
 }
@@ -290,32 +314,18 @@ bool SourceFile::parseFile(std::string file, FileInfo& fi, long long &lastFileTi
 
 bool SourceFile::copyFiles(std::string srcfile, std::string destfile, FileInfo& fi, long long &lastFileTime){
     Poco::FileInputStream fis(srcfile);
-    Poco::FileOutputStream fos(destfile, std::ios_base::app);
+    Poco::FileOutputStream fos(destfile);
 
-    int lineCount = 0;
-
+    std::cout << "(" << m_totalFile-- << ") filtering file : " << srcfile << std::endl;
     char str[4096];
-    char lastStr[4096];
     while (fis.getline(str, 4096)){
         std::string imsi = getTimestamp(str, 6);
         if (m_imsiMap.find(imsi) != m_imsiMap.end()){
-            ++lineCount;
-            if (lineCount == 1){
-                fi.firstLineTime = utcToStream(getTimestamp(str, getTimestampColumn(fi.interface)));       // 找出第一行时间戳
-            }
-            std::strcpy(lastStr, str);
             fos.write(str, std::strlen(str));       // 写新文件
         }
     }
     fos.close();
 
-    std::string time = getTimestamp(lastStr, getTimestampColumn(fi.interface));
-    fi.lastLineTime = utcToStream(time);                                        // 找出最后一行时间戳
-    lastFileTime = atoll(time.c_str());                                         // 修改lastFileTime  
-
-    fi.fileSize = boost::filesystem::file_size(destfile);            // 文件大小
-
-    fi.lineNumber = lineCount;
     return true;
 }
 
@@ -325,7 +335,7 @@ bool SourceFile::moveFiles(std::string path){
     if (boost::filesystem::exists(path)){
         try{
             // 移动所有Interface的文件到相应目录, error文件放入ERROR目录
-            for (int i = 0; i < TYPENUMBER + 1; i++){           
+            for (int i = 0; i < TYPENUMBER ; i++){           
                 long long lastFileTime = 0;
                 // 循环每个Interface类型的所有文件
                 for (std::vector<class FileInfo>::iterator it = m_interfaceFiles[i].begin(); it != m_interfaceFiles[i].end(); it++){
@@ -333,28 +343,19 @@ bool SourceFile::moveFiles(std::string path){
                     boost::filesystem::path oldFile = it->directory + "\\" + it->name;
 
                     boost::filesystem::path newFile;
-                    // 对于Interface类型文件，需要整理出三级时间目录
-                    if (i < TYPENUMBER){
-                        // 创建不存在的时间目录
-                        if (!boost::filesystem::exists(path + "\\" + it->nameInlineTime.substr(0,8))){
-                            boost::filesystem::create_directory(path + "\\" + it->nameInlineTime.substr(0, 8));
-                        }
 
-                        // 创建所有Interface的子目录及error目录
-                        if (!boost::filesystem::exists(path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i]))  {
-                            boost::filesystem::create_directory(path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i]);
-                        }                        
-
-                        newFile = path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
+                    // 创建不存在的时间目录
+                    if (!boost::filesystem::exists(path + "\\" + it->nameInlineTime.substr(0,8))){
+                        boost::filesystem::create_directory(path + "\\" + it->nameInlineTime.substr(0, 8));
                     }
-                    else{
-                        // Error 目录
-                        if (!boost::filesystem::exists(path + "\\" + m_directory[i]))  {
-                                boost::filesystem::create_directory(path + "\\" + m_directory[i]);
-                            }
 
-                        newFile = path + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
-                    }
+                    // 创建所有Interface的子目录及error目录
+                    if (!boost::filesystem::exists(path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i]))  {
+                        boost::filesystem::create_directory(path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i]);
+                    }                        
+
+                    newFile = path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
+
                     //boost::filesystem::path newFile = path + "\\" + m_directory[i] + "\\" + oldFile.filename().string();
                     boost::filesystem::path renameNewFile = newFile;
                     for (char c = 'a'; boost::filesystem::exists(renameNewFile); c++){
@@ -362,31 +363,29 @@ bool SourceFile::moveFiles(std::string path){
                         renameNewFile = boost::filesystem::path(newFile).replace_extension().string() + "_" + c + newFile.extension().string();
                     }
 
-                    if (i < TYPENUMBER){    // Interface 类型类型文件写log文件
-                        Poco::FileOutputStream fos(path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i] + "\\log.csv", std::ios_base::app);
-                        // 解释文件
-                        //parseFile(oldFile.string(), *it, lastFileTime); //解释文件，主要是取得文件行数和gap时间
-                        copyFiles(oldFile.string(), renameNewFile.string(), *it, lastFileTime);
-                        it->name = renameNewFile.filename().string();
+                    // Interface 类型类型文件写log文件
+                    //Poco::FileOutputStream fos(path + "\\" + it->nameInlineTime.substr(0, 8) + "\\" + m_directory[i] + "\\log.csv", std::ios_base::app);
+                    // 解释文件
+                    //parseFile(oldFile.string(), *it, lastFileTime); //解释文件，主要是取得文件行数和gap时间
+                    copyFiles(oldFile.string(), renameNewFile.string(), *it, lastFileTime);
+                    it->name = renameNewFile.filename().string();
 
-                        //printFileInfo(*it);
-                        std::string outLine = boost::lexical_cast<std::string>(it->id) + "|" + \
-                                              it->directory + "|" + \
-                                              it->name + "|" + \
-                                              boost::lexical_cast<std::string>(it->fileSize) + "|" + \
-                                              it->type + "|" + \
-                                              boost::lexical_cast<std::string>(it->lineNumber) + "|" + \
-                                              it->nameInlineTime + "|" + \
-                                              it->firstLineTime + "|" + \
-                                              it->lastLineTime + "|" + \
-                                              boost::lexical_cast<std::string>(it->gapTime) + "\r\n";
+                    //printFileInfo(*it);
+                    /*
+                    std::string outLine = boost::lexical_cast<std::string>(it->id) + "|" + \
+                                            it->directory + "|" + \
+                                            it->name + "|" + \
+                                            boost::lexical_cast<std::string>(it->fileSize) + "|" + \
+                                            it->type + "|" + \
+                                            boost::lexical_cast<std::string>(it->lineNumber) + "|" + \
+                                            it->nameInlineTime + "|" + \
+                                            it->firstLineTime + "|" + \
+                                            it->lastLineTime + "|" + \
+                                            boost::lexical_cast<std::string>(it->gapTime) + "\r\n";
 
-                        std::cout << outLine << std::endl;
-                        fos.write(outLine.c_str(), outLine.length());       // 写日志文件
-                    }
-                    else{
-                        boost::filesystem::rename(oldFile, renameNewFile);      // 移动Error文件
-                    }
+                    std::cout << outLine << std::endl;
+                    fos.write(outLine.c_str(), outLine.length());       // 写日志文件   
+                    */
                 }
             }
         }
