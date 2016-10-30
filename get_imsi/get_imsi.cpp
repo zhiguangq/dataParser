@@ -51,13 +51,10 @@ int main(int argc, char* argv[]){
 
     Poco::NotificationQueue taskQueue;
     Poco::NotificationQueue resultQueue;
+    Poco::ThreadPool *tp = new Poco::ThreadPool(2, 32);
     for (int i = 0; i < threadNumber; i++){
         GetImsiWorker* worker = new GetImsiWorker(taskQueue, resultQueue);
-        Poco::ThreadPool::defaultPool().start(*worker);
-    }
-
-    for (int i = 0; i < threadNumber; i++){
-        
+        tp->start(*worker);
     }
 
 #ifdef _DEBUG
